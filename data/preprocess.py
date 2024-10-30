@@ -12,60 +12,59 @@ def clean_tweet_text(text):
     return ' '.join(cleaned)
 
 def clean_tweets(dataset_file, save_file):
-    data = {}
-    headers = []
+    data = []
+    headers = ['date', 'text', 'stock']
     
     with open(dataset_file, 'r') as file:
         reader = csv.DictReader(file)
-        
-        headers = reader.fieldnames
+        reader.fieldnames[0] = 'date'
+        reader.fieldnames[1] = 'text'
+        reader.fieldnames[2] = 'stock'
         
         for i, row in enumerate(reader):
             text = row['text']
             cleaned = clean_tweet_text(text)
             
-            date = row['created_at'].split(' ')[0]
+            date = row['date'].split(' ')[0]
             
-            data.update({date: (data.get(date) if date in data.keys() else '') + cleaned})
-            
-            if i % 2000 == 0: print(i)
-    
-    write = []
-    for i, (date, text) in enumerate(zip(data.keys(), data.values())):
-        write.append({'id': i, 'created_at': date, 'text': text})
+            data.append({'date': date, 'text': cleaned, 'stock': row['stock']})
         
     with open(save_file, 'w') as file:
         writer = csv.DictWriter(file, fieldnames=headers)
         writer.writeheader()
-        writer.writerows(write)
+        writer.writerows(data)
         
 def get_stocks(file, ticker, start, end):
     data = yf.download(ticker, start, end)
     data.to_csv(file)
     
 def clean_stocks(dataset_file, save_file):
-    headers, data = [], []
+    headers, data = ['date', 'open', 'close', 'stock'], []
     
     with open(dataset_file, 'r') as file:
         reader = csv.DictReader(file)
-        headers = reader.fieldnames
+        reader.fieldnames[0] = 'Date'
+        reader.fieldnames[-1] = 'Stock'
         
+        for i in range(len(reader.fieldnames)): reader.fieldnames[i] = reader.fieldnames[i].lower()
+        
+        reader.__next__()
+        reader.__next__()
         for row in reader:
             data.append({
-                'Date': row['Date'].split(' ')[0], 
-                'Adj Close': row['Adj Close'],
-                'Close': row['Close'],
-                'High': row['High'],
-                'Low': row['Low'],
-                'Open': row['Open'],
-                'Volume': row['Volume']
+                'date': row['date'].split(' ')[0],
+                'close': row['close'],
+                'open': row['open'],
+                'stock': row['stock']
             })
     
     with open(save_file, 'w') as file:
         writer = csv.DictWriter(file, headers)
+        writer.writeheader()
         writer.writerows(data)
     
 if __name__ == "__main__":
-    get_stocks('stocks-data.csv', '^GSPC', '2020-04-09', '2020-07-16')
-    clean_stocks('stocks-data.csv', 'cleaned-stocks.csv')
-    clean_tweets('stock-market-tweets-data.csv', 'cleaned-tweets.csv')
+    #get_stocks('stocks-data.csv', '^GSPC', '2020-04-09', '2020-07-16')
+    #clean_stocks('stocks-data.csv', 'cleaned-stocks.csv')
+    clean_stocks('stock_yfinance_data.csv', 'new_data_stocks.csv')
+    clean_tweets('stock_tweets.csv', 'new_data_tweets.csv')
